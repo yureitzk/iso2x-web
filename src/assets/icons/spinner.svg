@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <circle
+    cx="16"
+    cy="16"
+    r="13"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    opacity=".2"
+  />
+  <path
+    d="M16 3
+    A13 13 0 0 1 29 16
+    H25
+    A9 9 0 0 0 16 7
+    Z"
+    fill="currentColor"
+  />
+  <path
+    d="M29 16
+    A13 13 0 0 1 16 29
+    V25
+    A9 9 0 0 0 25 16
+    Z"
+    fill="currentColor"
+    opacity=".65"
+  />
+  <circle
+    cx="16"
+    cy="16"
+    r="3"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+  />
+</svg>

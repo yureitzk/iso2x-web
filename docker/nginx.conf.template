@@ -1,0 +1,10 @@
+server {
+    listen ${PORT};
+
+    location ${BASE_PATH} {
+        alias /usr/share/nginx/html/;
+        index index.html;
+        try_files $uri $uri/ ${BASE_PATH}index.html;
+        add_header Cross-Origin-Embedder-Policy require-corp;
+    }
+}

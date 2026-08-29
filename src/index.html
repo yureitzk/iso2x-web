@@ -1,0 +1,949 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>%APP_DISPLAY_NAME%</title>
+		<meta name="description" content="%APP_DESCRIPTION%" />
+		<meta property="og:title" content="%APP_DISPLAY_NAME%" />
+		<meta property="og:description" content="%APP_DESCRIPTION%" />
+		<meta property="og:type" content="website" />
+		<link rel="icon" type="image/png" href="./favicon-96x96.png" sizes="96x96" />
+		<link rel="shortcut icon" href="./favicon.ico" />
+		<link rel="apple-touch-icon" sizes="320x320" href="./favicon-320x320.png" />
+		<meta name="apple-mobile-web-app-title" content="%APP_DISPLAY_NAME%" />
+		<link rel="canonical" href="https://yureitzk.github.io/iso2x-web/" />
+		<link rel="manifest" href="./manifest.webmanifest" />
+		<meta name="color-scheme" content="light dark" />
+		<meta
+			name="theme-color"
+			content="#dbdbdb"
+			media="(prefers-color-scheme: light)"
+		/>
+		<meta
+			name="theme-color"
+			content="#1e1e1e"
+			media="(prefers-color-scheme: dark)"
+		/>
+
+		<script>
+			(function () {
+				let theme = 'system';
+
+				try {
+					const raw = localStorage.getItem(__SETTINGS_KEY__);
+					const settings = raw ? JSON.parse(raw) : {};
+					theme = settings.theme ?? 'system';
+				} catch {}
+
+				const resolved =
+					theme === 'system'
+						? window.matchMedia('(prefers-color-scheme: dark)').matches
+							? 'dark'
+							: 'light'
+						: theme;
+
+				document.documentElement.setAttribute('data-theme', resolved);
+			})();
+		</script>
+	</head>
+
+	<body>
+		<header class="py-2 mb-4 header" id="site-header">
+			<div class="swoosh hidden sm:block">
+				<svg
+					viewBox="0 0 360 64"
+					preserveAspectRatio="xMidYMid slice"
+					xmlns="http://www.w3.org/2000/svg"
+					shape-rendering="geometricPrecision"
+				>
+					<defs>
+						<radialGradient
+							id="swooshGradient"
+							gradientUnits="userSpaceOnUse"
+							cx="0"
+							cy="0"
+							r="365.6"
+							fx="0"
+							fy="0"
+							gradientTransform="skewY(-10)"
+						>
+							<stop offset="0%" stop-color="rgb(86, 178, 69)" stop-opacity="0" />
+							<stop offset="48.7%" stop-color="rgb(86, 178, 69)" stop-opacity="0" />
+							<stop offset="49%" stop-color="rgb(86, 178, 69)" />
+							<stop offset="54.7%" stop-color="rgb(86, 178, 69)" />
+							<stop offset="55%" stop-color="rgb(0, 113, 57)" />
+							<stop offset="60.7%" stop-color="rgb(0, 113, 57)" />
+							<stop offset="61%" stop-color="rgb(123, 193, 68)" />
+							<stop offset="66.7%" stop-color="rgb(123, 193, 68)" />
+							<stop offset="67%" stop-color="rgb(36, 169, 70)" />
+							<stop offset="72.7%" stop-color="rgb(36, 169, 70)" />
+							<stop offset="73%" stop-color="rgb(0, 148, 63)" />
+							<stop offset="78.7%" stop-color="rgb(0, 148, 63)" />
+							<stop offset="79%" stop-color="rgb(101, 166, 50)" />
+							<stop offset="84.7%" stop-color="rgb(101, 166, 50)" />
+							<stop offset="85%" stop-color="rgb(221, 225, 57)" />
+							<stop offset="90.7%" stop-color="rgb(221, 225, 57)" />
+							<stop offset="91%" stop-color="rgb(86, 178, 69)" />
+							<stop offset="100%" stop-color="rgb(86, 178, 69)" />
+						</radialGradient>
+					</defs>
+					<rect
+						x="-200"
+						y="-200"
+						width="800"
+						height="400"
+						fill="url(#swooshGradient)"
+						class="swoosh__rect"
+					/>
+				</svg>
+			</div>
+			<div class="mx-auto container">
+				<div class="flex gap-2 items-center">
+					<a href="./">
+						<img
+							src="./favicon-320x320.png"
+							class="w-auto h-[3rem]"
+							width="320"
+							height="320"
+							alt="Logo"
+						/>
+						<span class="sr-only">%APP_DISPLAY_NAME%</span>
+					</a>
+					<div>
+						<h1 class="text-white font-bold mt-0 mb-0 leading-none text-lg">
+							%APP_DISPLAY_NAME%
+						</h1>
+						<p
+							class="hidden sm:block w-fit my-0 text-gray-300 text-sm header__description"
+						>
+							Web-based Xbox ISO converter.
+						</p>
+					</div>
+				</div>
+			</div>
+		</header>
+
+		<div class="mx-auto container">
+			<main class="pb-4">
+				<section class="mb-6">
+					<details class="mb-4">
+						<summary class="w-fit mb-2"><strong>Feature Status</strong></summary>
+						<ul id="feature-list"></ul>
+					</details>
+					<div id="source-dropzone" class="dropzone mb-4">
+						<div class="mb-4 flex gap-2 flex-wrap">
+							<label for="source-input" class="sr-only">Select source files</label>
+							<input
+								type="file"
+								id="source-input"
+								accept=".iso,.cso,.ciso,.cci,.zar,application/x-iso9660-image"
+								multiple
+								class="w-fit max-w-full"
+							/>
+							<button class="btn" id="add-btn" disabled>Add files(s)</button>
+						</div>
+						<div class="flex gap-2 flex-wrap">
+							<label for="folder-input" class="sr-only">Select a source folder</label>
+							<input
+								type="file"
+								id="folder-input"
+								webkitdirectory
+								directory
+								mozdirectory
+								multiple
+								class="w-fit max-w-full"
+							/>
+							<button class="btn" id="add-folder-btn" disabled>Add folder</button>
+						</div>
+						<div class="dropzone__status" aria-hidden="true">
+							<div class="flex items-center gap-1">
+								<svg
+									class="dropzone__icon"
+									width="16"
+									height="20"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									aria-hidden="true"
+								>
+									<use xlink:href="#icon-file-up"></use>
+								</svg>
+								<p class="dropzone__hint">Drop to add</p>
+							</div>
+						</div>
+						<p id="dropzone-fallback-note" class="dropzone__note" hidden>
+							Drag-and-drop of folders isn't supported in this browser - use "Add
+							folder" instead.
+						</p>
+					</div>
+					<details>
+						<summary class="w-fit mb-2"><strong>Settings</strong></summary>
+						<div class="mb-2">
+							<label>
+								<input type="checkbox" id="show-notifications" />
+								Show notifications
+							</label>
+						</div>
+						<div class="mb-2">
+							<label>
+								<input type="checkbox" id="notify-ignore-focus" />
+								Show notifications when this tab is focused
+							</label>
+						</div>
+						<div class="mb-2">
+							<label>
+								<input type="checkbox" id="keep-screen-awake" />
+								Keep screen awake while converting
+							</label>
+						</div>
+						<div class="mb-2 hidden sm:block">
+							<label>
+								<input type="checkbox" id="header-animation" />
+								Animate header
+							</label>
+						</div>
+						<div class="mb-2">
+							<label>
+								<input type="checkbox" id="favicon-enabled" />
+								Show tab icon status
+							</label>
+						</div>
+						<div class="mb-2">
+							<label>
+								<input type="checkbox" id="favicon-pulse-animation" />
+								Pulse tab icon while converting
+							</label>
+						</div>
+						<div class="mb-4">
+							<label>
+								<input type="checkbox" id="badge-enabled" />
+								Show app icon badge
+							</label>
+						</div>
+						<div class="mb-4">
+							<strong class="block mb-2">Concurrency</strong>
+							<div class="pl-3 flex flex-col gap-2">
+								<label class="w-fit">
+									Max concurrent conversions (blank = auto):
+									<input
+										type="number"
+										id="max-concurrent-conversions"
+										min="1"
+										step="1"
+										class="w-16"
+									/>
+								</label>
+								<label class="w-fit">
+									Max concurrent download streams:
+									<input
+										type="number"
+										id="max-concurrent-download-streams"
+										min="1"
+										step="1"
+										class="w-16"
+									/>
+								</label>
+							</div>
+						</div>
+						<div>
+							<strong class="block mb-2">Default conversion options</strong>
+							<div class="pl-3 flex flex-col gap-2">
+								<div>
+									<label>
+										Default format:
+										<select id="default-format">
+											<option value="god">GoD</option>
+											<option value="xiso">XISO</option>
+											<option value="extracted">XEX</option>
+											<option value="ciso">CSO</option>
+											<option value="cci">CCI</option>
+											<option value="zar">ZAR</option>
+										</select>
+									</label>
+								</div>
+								<div>
+									<strong class="block mb-1 text-sm">GoD</strong>
+									<div class="pl-3 flex flex-col gap-2">
+										<label class="w-fit">
+											Scrub:
+											<select id="default-god-mode">
+												<option value="none">None</option>
+												<option value="partial">Partial</option>
+												<option value="full" selected>Full</option>
+											</select>
+										</label>
+										<label class="w-fit">
+											Default console key:
+											<input
+												type="file"
+												id="ephemeral-god-keyvault"
+												accept=".bin"
+												class="w-fit max-w-full"
+											/>
+										</label>
+										<label class="w-fit">
+											<input type="checkbox" id="default-god-sign" disabled />
+											Console-sign by default
+											<span class="text-fg-disabled">(requires a default key above)</span>
+										</label>
+										<label class="w-fit">
+											Default Device ID:
+											<div class="clearable-input">
+												<input
+													type="text"
+													id="default-god-device-id"
+													placeholder="40 hex characters"
+													pattern="[0-9a-fA-F]{40}"
+													title="40 hex characters (0-9, a-f)"
+													autocomplete="off"
+													spellcheck="false"
+												/>
+												<button
+													type="button"
+													class="clearable-input__clear-btn unstyled-btn"
+													aria-label="Clear Device ID"
+													hidden
+												>
+													<svg
+														width="12"
+														height="12"
+														fill="none"
+														stroke="currentColor"
+														stroke-width="1.5"
+														stroke-linecap="round"
+														stroke-linejoin="round"
+														aria-hidden="true"
+													>
+														<use xlink:href="#icon-x"></use>
+													</svg>
+												</button>
+											</div>
+										</label>
+										<div class="default-god-device-id-error" hidden></div>
+									</div>
+								</div>
+								<div>
+									<strong class="block mb-1 text-sm">XISO</strong>
+									<div class="pl-3 flex flex-col gap-2">
+										<label class="w-fit">
+											Scrub:
+											<select id="default-xiso-mode">
+												<option value="zero">Zero</option>
+												<option value="trim">Trim</option>
+												<option value="full" selected>Full</option>
+											</select>
+										</label>
+										<label class="w-fit">
+											<input type="checkbox" id="default-split-xiso" />
+											Split XISO
+										</label>
+									</div>
+								</div>
+								<div>
+									<strong class="block mb-1 text-sm">XEX</strong>
+									<div class="pl-3 flex flex-col gap-2">
+										<label class="w-fit">
+											<input type="checkbox" id="default-extracted-skip-system-update" />
+											Skip system update files
+										</label>
+										<label class="w-fit">
+											<input type="checkbox" id="default-extracted-allowed-media-patch" />
+											Allowed Media XBE Patch
+										</label>
+										<label class="w-fit">
+											<input type="checkbox" id="default-extracted-rename-title" />
+											Rename XBE Title
+										</label>
+									</div>
+								</div>
+								<div>
+									<strong class="block mb-1 text-sm">CSO</strong>
+									<div class="pl-3 flex flex-col gap-2">
+										<label class="w-fit">
+											Scrub:
+											<select id="default-ciso-mode">
+												<option value="none">None</option>
+												<option value="partial">Partial</option>
+												<option value="full" selected>Full</option>
+											</select>
+										</label>
+									</div>
+								</div>
+								<div>
+									<strong class="block mb-1 text-sm">CCI</strong>
+									<div class="pl-3 flex flex-col gap-2">
+										<label class="w-fit">
+											Scrub:
+											<select id="default-cci-mode">
+												<option value="none">None</option>
+												<option value="partial">Partial</option>
+												<option value="full" selected>Full</option>
+											</select>
+										</label>
+									</div>
+								</div>
+								<div>
+									<label>
+										<input type="checkbox" id="default-attach-xbe" />
+										Generate Attach XBE
+										<span class="text-fg-disabled"
+											>(OGX source &#8594; XISO/CSO/CCI only)</span
+										>
+									</label>
+								</div>
+							</div>
+						</div>
+					</details>
+				</section>
+				<template id="feature-item-template">
+					<li>
+						<span class="feature-label"></span>
+						<span class="feature-status"></span>
+						<button type="button" class="feature-action unstyled-btn" hidden></button>
+					</li>
+				</template>
+				<hr class="mb-8" />
+				<section class="mb-8">
+					<div class="queue-title-row mb-4">
+						<h2 class="my-0 text-lg mb-2">
+							Processing Queue
+							<span
+								class="queue-title-row__progress text-base"
+								id="queue-progress"
+								hidden
+							></span>
+						</h2>
+						<div
+							id="queue-bulk-actions"
+							class="queue-bulk-actions mb-3 flex flex-wrap items-center justify-between gap-2 bg-queue"
+						>
+							<div class="flex items-center gap-2">
+								<label
+									class="flex items-center gap-1 font-semibold cursor-pointer text-sm"
+								>
+									<input type="checkbox" id="select-all-checkbox" />
+									<span>Select All</span>
+								</label>
+								<span id="selected-count" class="text-sm text-fg-disabled"
+									>(0 selected)</span
+								>
+							</div>
+							<div class="flex flex-wrap gap-2">
+								<button
+									type="button"
+									id="batch-convert-btn"
+									class="btn text-xs"
+									disabled
+								>
+									Convert
+								</button>
+								<button type="button" id="batch-pause-btn" disabled>
+									Pause / Resume
+								</button>
+								<button type="button" id="batch-cancel-btn" disabled>Cancel</button>
+								<button type="button" id="batch-remove-btn" disabled>Remove</button>
+							</div>
+						</div>
+						<ul id="queue-stats" class="queue-stats reset-list">
+							<li class="queue-stats__item queue-stats__item--total">
+								<button
+									class="queue-stats__pill unstyled-btn"
+									id="filter-total"
+									aria-pressed="false"
+								>
+									<span id="stat-total">0</span> total
+								</button>
+							</li>
+							<li class="queue-stats__item queue-stats__item--running">
+								<button
+									class="queue-stats__pill unstyled-btn queue-stats__pill--running"
+									id="filter-running"
+									aria-pressed="false"
+								>
+									<span id="stat-running">0</span> running
+								</button>
+							</li>
+							<li class="queue-stats__item queue-stats__item--done">
+								<button
+									class="queue-stats__pill unstyled-btn queue-stats__pill--done"
+									id="filter-done"
+									aria-pressed="false"
+								>
+									<span id="stat-done">0</span> done
+								</button>
+							</li>
+							<li class="queue-stats__item queue-stats__item--paused">
+								<button
+									class="queue-stats__pill unstyled-btn queue-stats__pill--paused"
+									id="filter-paused"
+									aria-pressed="false"
+								>
+									<span id="stat-paused">0</span> paused
+								</button>
+							</li>
+							<li class="queue-stats__item queue-stats__item--error">
+								<button
+									class="queue-stats__pill unstyled-btn queue-stats__pill--error"
+									id="filter-error"
+									aria-pressed="false"
+								>
+									<span id="stat-error">0</span> failed
+								</button>
+							</li>
+							<li class="queue-stats__item queue-stats__item--cancelled">
+								<button
+									class="queue-stats__pill unstyled-btn queue-stats__pill--cancelled"
+									id="filter-cancelled"
+									aria-pressed="false"
+								>
+									<span id="stat-cancelled">0</span> cancelled
+								</button>
+							</li>
+						</ul>
+					</div>
+					<ul id="queue" class="reset-list"></ul>
+					<template id="queue-item-template">
+						<li class="queue-item mb-4 last:mb-0" data-testid="queue-item">
+							<div class="p-3 queue-item__header mb-2">
+								<div
+									class="grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-2 items-center"
+								>
+									<div class="flex items-center gap-2 min-w-0">
+										<input
+											type="checkbox"
+											class="queue-item__select-checkbox cursor-pointer"
+											data-testid="queue-item-select-checkbox"
+											aria-label="Select entry"
+										/>
+										<strong
+											class="queue-item__title break-words flex flex-col whitespace-pre-wrap min-w-0"
+											data-testid="queue-item-title"
+										></strong>
+									</div>
+									<div class="flex items-center gap-2 order-first sm:order-none">
+										<span
+											class="queue-item__status queue-item__status--idle flex flex-col"
+											data-testid="queue-item-status"
+											>[inspecting]</span
+										>
+										<div
+											class="queue-item__move-group flex flex-row gap-x-1 order-first sm:order-none"
+										>
+											<button
+												type="button"
+												class="queue-item__move-up-btn"
+												aria-label="Move up in queue"
+												title="Move up in queue"
+											>
+												<svg
+													width="24"
+													height="12"
+													fill="currentColor"
+													style="transform: rotate(180deg)"
+												>
+													<use xlink:href="#icon-arrow"></use>
+												</svg>
+											</button>
+											<button
+												type="button"
+												class="queue-item__move-down-btn"
+												aria-label="Move down in queue"
+												title="Move down in queue"
+											>
+												<svg width="24" height="12" fill="currentColor">
+													<use xlink:href="#icon-arrow"></use>
+												</svg>
+											</button>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div class="px-3 py-1">
+								<div class="queue-item__icon-row mb-2 flex items-center gap-2">
+									<svg
+										class="queue-item__icon-spinner"
+										width="32"
+										height="32"
+										aria-hidden="true"
+									>
+										<use xlink:href="#icon-spinner"></use>
+									</svg>
+									<svg
+										class="queue-item__icon-fallback"
+										width="32"
+										height="32"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="1.5"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										hidden
+										aria-hidden="true"
+									>
+										<use xlink:href="#icon-disc"></use>
+									</svg>
+									<img class="queue-item__icon" alt="" width="32" height="32" hidden />
+									<div class="source-meta" data-testid="source-meta" hidden>
+										<span
+											class="source-meta__title-id"
+											data-testid="source-meta-title-id"
+										></span>
+										<span
+											class="source-meta__content-type"
+											data-testid="source-meta-content-type"
+										></span>
+										<span>
+											<span
+												class="source-meta__size"
+												data-testid="source-meta-size"
+											></span>
+											<span class="source-meta__size-metric">bytes</span>
+										</span>
+									</div>
+								</div>
+								<div
+									class="queue-item__error mb-1"
+									data-testid="queue-item-error"
+									hidden
+								></div>
+								<div class="queue-item__actions mb-3 flex flex-wrap gap-2">
+									<input
+										type="text"
+										class="queue-item__game-title"
+										data-testid="queue-item-game-title"
+										placeholder="Detecting title..."
+										disabled
+										size="26"
+									/>
+									<select
+										class="queue-item__format-select"
+										data-testid="queue-item-format-select"
+										disabled
+									>
+										<option value="god">GoD</option>
+										<option value="xiso">XISO</option>
+										<option value="extracted">XEX</option>
+										<option value="ciso">CSO</option>
+										<option value="cci">CCI</option>
+										<option value="zar">ZAR</option>
+									</select>
+									<button class="queue-item__convert-btn">Convert</button>
+									<button
+										class="queue-item__pause-btn"
+										data-testid="queue-item-pause-btn"
+										hidden
+									>
+										Pause
+									</button>
+									<button class="queue-item__cancel-btn" hidden>Cancel</button>
+									<button class="queue-item__remove-btn">Remove</button>
+								</div>
+								<div class="mb-3 flex items-start justify-between flex-col sm:flex-row">
+									<div class="max-w-full">
+										<details
+											class="queue-item__parts mb-2"
+											data-testid="queue-item-parts"
+											hidden
+										>
+											<summary class="w-fit">
+												<strong
+													>Source Files (<span
+														class="queue-item__parts-count"
+														data-testid="queue-item-parts-count"
+													></span
+													>)</strong
+												>
+											</summary>
+											<ul class="queue-item__parts-list reset-list mt-2"></ul>
+											<div
+												class="queue-item__parts-add mt-2 flex items-center gap-2"
+												data-testid="parts-add"
+												hidden
+											>
+												<button
+													type="button"
+													class="queue-item__parts-add-btn btn text-xs px-2 py-1"
+													data-testid="parts-add-btn"
+												>
+													Add file
+												</button>
+												<input
+													type="file"
+													class="queue-item__parts-add-input sr-only"
+													data-testid="parts-add-input"
+													aria-label="Add source file"
+													tabindex="-1"
+												/>
+											</div>
+											<div class="queue-item__parts-verify mt-2" hidden>
+												<button
+													type="button"
+													class="queue-item__verify-order-btn btn text-xs px-2 py-1"
+													data-testid="verify-order-btn"
+												>
+													Verify order
+												</button>
+											</div>
+										</details>
+										<details class="queue-item__options">
+											<summary class="w-fit"><strong>Options</strong></summary>
+											<div class="queue-item__option mt-2" data-formats="god">
+												<label class="w-fit">
+													Scrub:
+													<select class="queue-item__god-mode">
+														<option value="none">None</option>
+														<option value="partial">Partial</option>
+														<option value="full">Full</option>
+													</select>
+												</label>
+												<label class="w-fit">
+													Console key:
+													<input
+														type="file"
+														class="queue-item__god-keyvault"
+														accept=".bin"
+													/>
+												</label>
+												<label class="w-fit">
+													<input type="checkbox" class="queue-item__god-sign" disabled />
+													Console-sign (CON)
+												</label>
+												<label class="w-fit">
+													Device ID:
+													<div class="clearable-input">
+														<input
+															type="text"
+															class="queue-item__god-device-id"
+															placeholder="40 hex characters"
+															pattern="[0-9a-fA-F]{40}"
+															title="40 hex characters (0-9, a-f)"
+															autocomplete="off"
+															spellcheck="false"
+														/>
+														<button
+															type="button"
+															class="clearable-input__clear-btn queue-item__god-device-id-clear-btn unstyled-btn"
+															aria-label="Clear Device ID"
+															hidden
+														>
+															<svg
+																width="12"
+																height="12"
+																fill="none"
+																stroke="currentColor"
+																stroke-width="1.5"
+																stroke-linecap="round"
+																stroke-linejoin="round"
+																aria-hidden="true"
+															>
+																<use xlink:href="#icon-x"></use>
+															</svg>
+														</button>
+													</div>
+												</label>
+												<div class="queue-item__god-device-id-error" hidden></div>
+											</div>
+											<div class="queue-item__option mt-2" data-formats="xiso">
+												<label class="w-fit">
+													Scrub:
+													<select class="queue-item__xiso-mode">
+														<option value="zero">Zero</option>
+														<option value="trim">Trim</option>
+														<option value="full">Full</option>
+													</select>
+												</label>
+												<label class="w-fit">
+													<input type="checkbox" class="queue-item__split-xiso" />
+													Split XISO
+												</label>
+											</div>
+											<div class="queue-item__option mt-2" data-formats="extracted">
+												<label class="w-fit">
+													<input type="checkbox" class="queue-item__skip-system-update" />
+													Skip system update files
+												</label>
+												<label class="w-fit">
+													<input
+														type="checkbox"
+														class="queue-item__allowed-media-patch"
+														disabled
+													/>
+													Allowed Media XBE Patch
+												</label>
+												<label class="w-fit">
+													<input type="checkbox" class="queue-item__rename-title" disabled />
+													Rename XBE Title
+												</label>
+											</div>
+											<div class="queue-item__option mt-2" data-formats="ciso">
+												<label class="w-fit">
+													Scrub:
+													<select class="queue-item__ciso-mode">
+														<option value="none">None</option>
+														<option value="partial">Partial</option>
+														<option value="full">Full</option>
+													</select>
+												</label>
+											</div>
+											<div class="queue-item__option mt-2" data-formats="cci">
+												<label class="w-fit">
+													Scrub:
+													<select class="queue-item__cci-mode">
+														<option value="none">None</option>
+														<option value="partial">Partial</option>
+														<option value="full">Full</option>
+													</select>
+												</label>
+											</div>
+											<div class="queue-item__option mt-2" data-formats="xiso ciso cci">
+												<label class="w-fit">
+													<input type="checkbox" class="queue-item__attach-xbe" disabled />
+													Generate Attach XBE
+												</label>
+											</div>
+										</details>
+									</div>
+									<div class="self-end flex gap-2 ml-auto">
+										<button
+											type="button"
+											class="queue-item__clear-btn"
+											aria-label="Clear log"
+											hidden
+										>
+											Clear
+										</button>
+										<button
+											type="button"
+											class="queue-item__copy-btn"
+											aria-label="Copy log"
+											hidden
+										>
+											Copy
+										</button>
+									</div>
+								</div>
+								<div class="log-stream-wrap">
+									<pre
+										class="log-stream text-xs p-2 h-[140px] resize-y overflow-y-auto whitespace-pre-wrap break-words"
+										hidden
+									></pre>
+									<button
+										type="button"
+										class="log-stream__scroll-bottom-btn"
+										aria-label="Scroll to bottom"
+										title="Scroll to bottom"
+										hidden
+									>
+										<svg width="14" height="7" fill="currentColor" aria-hidden="true">
+											<use xlink:href="#icon-arrow"></use>
+										</svg>
+									</button>
+								</div>
+							</div>
+						</li>
+					</template>
+					<template id="queue-item-part-row-template">
+						<li
+							class="queue-item__part-row flex items-start gap-2 py-1"
+							data-testid="part-row"
+							data-locked="true"
+						>
+							<div
+								class="queue-item__part-row-drag flex flex-col shrink-0 self-center"
+								data-testid="part-row-drag"
+								hidden
+							>
+								<button
+									type="button"
+									class="unstyled-btn queue-item__part-row-up-btn"
+									aria-label="Move earlier"
+									title="Move earlier"
+								>
+									<svg
+										width="16"
+										height="16"
+										fill="none"
+										stroke="currentColor"
+										style="transform: rotate(180deg)"
+									>
+										<use xlink:href="#icon-chevron"></use>
+									</svg>
+								</button>
+								<button
+									type="button"
+									class="unstyled-btn queue-item__part-row-down-btn"
+									aria-label="Move later"
+									title="Move later"
+								>
+									<svg width="16" height="16" fill="none" stroke="currentColor">
+										<use xlink:href="#icon-chevron"></use>
+									</svg>
+								</button>
+							</div>
+							<div
+								class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 min-w-0 flex-1"
+							>
+								<div class="flex flex-col min-w-0 flex-1">
+									<span class="flex items-center gap-x-2 min-w-0 flex-wrap">
+										<span
+											class="queue-item__part-row-name truncate font-semibold"
+											data-testid="part-row-name"
+										></span>
+										<span
+											class="queue-item__part-row-status shrink-0 text-xs text-fg-muted"
+											data-testid="part-row-status"
+										></span>
+									</span>
+									<span
+										class="queue-item__part-row-size text-xs text-fg-muted"
+										data-testid="part-row-size"
+									></span>
+								</div>
+								<button
+									type="button"
+									class="queue-item__part-row-remove-btn text-xs shrink-0 ml-auto"
+									data-testid="part-row-remove-btn"
+									hidden
+								>
+									Remove
+								</button>
+							</div>
+						</li>
+					</template>
+				</section>
+			</main>
+
+			<footer class="flex flex-col gap-2 py-4">
+				<div class="w-fit ml-auto flex items-center gap-2">
+					<label for="theme-select">Theme:</label>
+					<select
+						id="theme-select"
+						aria-label="Select theme"
+						class="theme-select px-2 py-0.5 text-xs"
+					>
+						<option value="system">System</option>
+						<option value="light">Light</option>
+						<option value="dark">Dark</option>
+					</select>
+				</div>
+				<div class="w-fit mx-auto block">
+					<span class="text-center text-xs text-gray-500 block">
+						v%APP_VERSION%-%COMMIT_HASH%
+					</span>
+					<a
+						href="https://github.com/yureitzk/iso2x-web"
+						rel="noreferrer noopener"
+						class="text-sm"
+					>
+						Source Code
+					</a>
+				</div>
+			</footer>
+		</div>
+
+		<script type="module" src="./js/main.js"></script>
+	</body>
+</html>
