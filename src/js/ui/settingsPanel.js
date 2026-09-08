@@ -7,6 +7,7 @@ import {
 	stripWhitespace,
 } from '../lib/helpers.js';
 import { setWakeLockEnabled } from '../lib/wakeLock.js';
+import { setAudioKeepAliveEnabled } from '../lib/audioKeepAlive.js';
 import { applyFaviconSettings } from '../lib/favicon.js';
 import { applyBadgeSettings } from '../lib/badge.js';
 import { applyConcurrencySettings } from './queue/queueUi.js';
@@ -77,6 +78,17 @@ export function initSettingsPanel() {
 		});
 	}
 
+	const audioKeepAliveCheckbox = document.getElementById('audio-keepalive');
+	if (audioKeepAliveCheckbox instanceof HTMLInputElement) {
+		audioKeepAliveCheckbox.checked = settings.get('audioKeepAlive');
+		setAudioKeepAliveEnabled(audioKeepAliveCheckbox.checked);
+		audioKeepAliveCheckbox.addEventListener('change', () => {
+			const val = audioKeepAliveCheckbox.checked;
+			settings.set('audioKeepAlive', val);
+			setAudioKeepAliveEnabled(val);
+		});
+	}
+
 	const defaultFormatEl = document.getElementById('default-format');
 	if (defaultFormatEl instanceof HTMLSelectElement) {
 		defaultFormatEl.value = settings.get('defaultConversionOptions').format;
@@ -114,9 +126,6 @@ export function initSettingsPanel() {
 	) {
 		const hasDefaultKey = () => !!ephemeralSettings.get('godSigningKey');
 
-		// The key is ephemeral (cleared on reload), but god.sign is
-		// persisted - reset a stale `true` left over without a key,
-		// so it can't silently reapply once a key is re-uploaded.
 		if (!hasDefaultKey() && settings.get('defaultConversionOptions').god.sign) {
 			const staleOpts = settings.get('defaultConversionOptions');
 			settings.set('defaultConversionOptions', {
@@ -171,9 +180,6 @@ export function initSettingsPanel() {
 		godDeviceIdInput.value =
 			settings.get('defaultConversionOptions').god.deviceId ?? '';
 
-		// Commits on every keystroke, not just blur - a drag-and-drop file
-		// add never focuses the page, so blur alone would leave a newly
-		// typed default stale for it.
 		const persistDeviceId = () => {
 			try {
 				parseDeviceId(godDeviceIdInput.value);

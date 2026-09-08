@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { EVENTS, MSG } from '../../core/protocol.js';
-import { queue } from '../../queue/queue.js';
+import { queue } from '../../core/queue.js';
 import { createMockSwBridge } from '../../../../test/utils/swBridgeMock.js';
 
 const { settings: mockSettings } = await vi.hoisted(async () => {
@@ -15,7 +15,7 @@ const { MockWorkerController, mockControllers } = await vi.hoisted(async () => {
 		await import('../../../../test/utils/workerControllerMock.js');
 	return createMockWorkerController();
 });
-vi.mock('../../workers/WorkerController.js', () => ({
+vi.mock('../../workers/controller/WorkerController.js', () => ({
 	WorkerController: MockWorkerController,
 }));
 const { lastController: lastControllerOf } =
@@ -239,9 +239,8 @@ describe('createConversionController - multi-download permission priming', () =>
 		vi.unstubAllGlobals();
 	});
 
-	// Regression test: priming used to fire automatically on every
-	// startConversion(), silently downloading two junk files before
-	// the real output. Must stay opt-in via the settings panel only.
+	// Priming must stay opt-in via the settings panel only, never
+	// automatic on startConversion().
 	it('never primes multi-download permission on its own', async () => {
 		const entry = makeSingleEntry();
 		queue.push(entry);

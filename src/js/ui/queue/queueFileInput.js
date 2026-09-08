@@ -10,7 +10,12 @@ import {
 	stripWhitespace,
 	supportsFolderInput,
 } from '../../lib/helpers.js';
-import { createLogger } from '../../lib/logger.js';
+import {
+	createLogger,
+	clearLog,
+	getLogHistory,
+	jumpToTail,
+} from '../../lib/logger.js';
 import { settings } from '../../lib/settings.js';
 import { ephemeralSettings } from '../../lib/ephemeralSettings.js';
 import {
@@ -20,9 +25,9 @@ import {
 	updateScrollBottomVisibility,
 	scheduleScrollCheck,
 } from './queueItemDom.js';
-import { WorkerController } from '../../workers/WorkerController.js';
-import { inspectWorkerPool } from '../../workers/WorkerPool.js';
-import { queue, cloneConversionOptions } from '../../queue/queue.js';
+import { WorkerController } from '../../workers/controller/WorkerController.js';
+import { inspectWorkerPool } from '../../workers/controller/WorkerPool.js';
+import { queue, cloneConversionOptions } from '../../core/queue.js';
 import {
 	updateOptionsVisibility,
 	applyXbePatchConstraints,
@@ -32,7 +37,7 @@ import {
 } from './queueItemOptions.js';
 
 /**
- * @import { SwBridge } from '../../serviceWorker/SwBridge.js'
+ * @import { SwBridge } from '../../serviceWorker/controller/SwBridge.js'
  * @import {
  *   QueueEntry,
  *   ConversionStatus,
@@ -240,11 +245,11 @@ export function createFileInputController({
 				convertBtn.disabled =
 					item.options.format === 'god' && !isGodDeviceIdValid(item);
 			};
-			// Commits into item.options.god.deviceId - what startConversion()
-			// actually reads - on every keystroke, not just blur. Convert can
-			// be triggered without this field ever losing focus (e.g. a bulk
-			// "Convert all"), so a blur-only handler could start with a stale
-			// device ID even while the gate above shows it as valid.
+			// Writes to item.options.god.deviceId (what startConversion()
+			// actually reads) on every keystroke, not just blur. Convert
+			// can be triggered without this field ever losing focus, e.g.
+			// a bulk "Convert all", so a blur-only handler could start
+			// with a stale device ID even while the gate above says valid.
 			const persistDeviceId = () => {
 				try {
 					parseDeviceId(godDeviceIdInputEl.value);
@@ -332,10 +337,14 @@ export function createFileInputController({
 			moveDownBtn.addEventListener('click', () => moveBlock(item, 'down'));
 
 			clearBtn.addEventListener('click', () => {
-				logEl.textContent = '';
+				clearLog(logEl);
 			});
 			scrollBottomBtn.addEventListener('click', () => {
-				logEl.scrollTop = logEl.scrollHeight;
+				// If the user paged back into older history, the rendered
+				// window may have been trimmed (see logger.js), so rebuild
+				// to the true tail instead of just scrolling whatever
+				// window happens to be live to its own bottom.
+				jumpToTail(logEl);
 				updateScrollBottomVisibility(item);
 			});
 			logEl.addEventListener('scroll', () => scheduleScrollCheck(item));
@@ -345,16 +354,17 @@ export function createFileInputController({
 			const logObserver = new MutationObserver(() => scheduleScrollCheck(item));
 			logObserver.observe(logEl, { childList: true });
 
-			// .log-stream is resize-y - dragging it changes clientHeight
-			// without a scroll or mutation event either.
+			// .log-stream is also resize-y, and dragging it changes
+			// clientHeight without firing a scroll or mutation event.
 			const logResizeObserver = new ResizeObserver(() =>
 				scheduleScrollCheck(item),
 			);
 			logResizeObserver.observe(logEl);
 
 			copyBtn.addEventListener('click', async () => {
-				if (!logEl.textContent?.trim()) return;
-				const ok = await copyToClipboard(logEl.textContent ?? '');
+				const fullLog = getLogHistory(logEl);
+				if (!fullLog.trim()) return;
+				const ok = await copyToClipboard(fullLog);
 				copyBtn.textContent = ok ? TEXT.COPY_SUCCESS : TEXT.COPY_FAIL;
 				copyBtn.setAttribute(
 					'aria-label',

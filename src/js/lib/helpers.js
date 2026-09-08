@@ -10,7 +10,7 @@ export const checkWebWorkers = async () => {
 	const ok = typeof Worker !== 'undefined';
 	return {
 		status: ok ? 'available' : 'not-available',
-		text: ok ? 'Available' : 'Not supported',
+		text: ok ? TEXT.FEATURE_STATUS_AVAILABLE : TEXT.FEATURE_STATUS_NOT_SUPPORTED,
 	};
 };
 
@@ -37,14 +37,12 @@ function normalizePathSegments(path) {
 /**
  * Repairs Android's corrupted `webkitRelativePath` for folders picked
  * through `<input webkitdirectory>`. Chromium-on-Android leaks its
- * internal `content://.../tree/<id>/document/<id>` URI shape into
- * the path instead of a clean relative one, e.g.
- *   "primary:Download/json/document/primary:Download/json/track.png"
- * instead of "json/track.png". Splitting on the "/document/" marker
- * and stripping the duplicated tree-path prefix recovers the real
- * relative path. Any path that doesn't match this shape is returned
- * unchanged - including desktop paths and the always-empty paths
- * Firefox for Android and iOS/iPadOS report (see relativeDirEntries).
+ * internal `content://.../tree/<id>/document/<id>` URI shape into the
+ * path, e.g. "primary:Download/json/document/primary:Download/json/track.png"
+ * instead of "json/track.png". Splitting on "/document/" and stripping
+ * the duplicated prefix recovers the real path. Anything that doesn't
+ * match this shape (desktop paths, Firefox-Android/iOS's always-empty
+ * paths) is returned unchanged.
  * @param {string} rawPath
  * @returns {string}
  */
@@ -73,9 +71,9 @@ export function decodeAndroidSafPath(rawPath) {
 	const rawTree = path.slice(0, markerIndex);
 	const rawDoc = path.slice(markerIndex + marker.length);
 
-	// Both sides must carry a SAF `<volume>:` prefix (e.g. "primary:")
-	// before any slash - this is what distinguishes the corrupted shape
-	// from an ordinary path with a real folder named "document".
+	// Both sides need a SAF `<volume>:` prefix (e.g. "primary:") before
+	// any slash. That's what tells the corrupted shape apart from an
+	// ordinary path that just happens to have a folder named "document".
 	const volumePrefix = /^[^/]+:/;
 	if (!volumePrefix.test(rawTree) || !volumePrefix.test(rawDoc)) return rawPath;
 
@@ -125,7 +123,7 @@ export function relativeDirEntries(fileList) {
 /** @type {FeatureCheck} */
 export const checkServiceWorker = async () => {
 	if (!('serviceWorker' in navigator)) {
-		return { status: 'not-available', text: 'Not supported' };
+		return { status: 'not-available', text: TEXT.FEATURE_STATUS_NOT_SUPPORTED };
 	}
 
 	const reg = await navigator.serviceWorker.getRegistration(
@@ -133,25 +131,25 @@ export const checkServiceWorker = async () => {
 	);
 
 	if (!reg) {
-		return { status: 'warn', text: 'Not registered' };
+		return { status: 'warn', text: TEXT.SW_NOT_REGISTERED };
 	}
 
 	if (reg.active) {
 		if (!navigator.serviceWorker.controller) {
-			return { status: 'warn', text: 'Active (Uncontrolled)' };
+			return { status: 'warn', text: TEXT.SW_ACTIVE_UNCONTROLLED };
 		}
-		return { status: 'available', text: 'Running' };
+		return { status: 'available', text: TEXT.SW_RUNNING };
 	}
 
 	if (reg.installing) {
-		return { status: 'warn', text: 'Installing' };
+		return { status: 'warn', text: TEXT.SW_INSTALLING };
 	}
 
 	if (reg.waiting) {
-		return { status: 'warn', text: 'Waiting to activate' };
+		return { status: 'warn', text: TEXT.SW_WAITING_TO_ACTIVATE };
 	}
 
-	return { status: 'warn', text: 'Registered but not active' };
+	return { status: 'warn', text: TEXT.SW_REGISTERED_NOT_ACTIVE };
 };
 
 /**
@@ -184,7 +182,7 @@ export const checkWebAssembly = async () => {
 	const ok = typeof WebAssembly === 'object';
 	return {
 		status: ok ? 'available' : 'not-available',
-		text: ok ? 'Available' : 'Not supported',
+		text: ok ? TEXT.FEATURE_STATUS_AVAILABLE : TEXT.FEATURE_STATUS_NOT_SUPPORTED,
 	};
 };
 
@@ -198,7 +196,7 @@ export const checkBadging = async () => {
 	const ok = supportsBadging();
 	return {
 		status: ok ? 'available' : 'not-available',
-		text: ok ? 'Available' : 'Not supported',
+		text: ok ? TEXT.FEATURE_STATUS_AVAILABLE : TEXT.FEATURE_STATUS_NOT_SUPPORTED,
 	};
 };
 
@@ -207,7 +205,7 @@ export const checkWakeLock = async () => {
 	const ok = 'wakeLock' in navigator;
 	return {
 		status: ok ? 'available' : 'not-available',
-		text: ok ? 'Available' : 'Not supported',
+		text: ok ? TEXT.FEATURE_STATUS_AVAILABLE : TEXT.FEATURE_STATUS_NOT_SUPPORTED,
 	};
 };
 
@@ -223,7 +221,7 @@ export const checkNotifications = async () => {
 	if (!supported) {
 		return {
 			status: 'not-available',
-			text: 'Not supported',
+			text: TEXT.FEATURE_STATUS_NOT_SUPPORTED,
 		};
 	}
 
@@ -233,19 +231,19 @@ export const checkNotifications = async () => {
 		case 'granted':
 			return {
 				status: 'available',
-				text: 'Permission granted',
+				text: TEXT.NOTIFICATIONS_PERMISSION_GRANTED,
 			};
 
 		case 'denied':
 			return {
 				status: 'not-available',
-				text: 'Permission denied',
+				text: TEXT.NOTIFICATIONS_PERMISSION_DENIED,
 			};
 
 		default:
 			return {
 				status: 'warn',
-				text: 'Permission not granted',
+				text: TEXT.NOTIFICATIONS_PERMISSION_NOT_GRANTED,
 			};
 	}
 };
@@ -294,7 +292,7 @@ export const checkFolderInput = async () => {
 	const ok = supportsFolderInput();
 	return {
 		status: ok ? 'available' : 'not-available',
-		text: ok ? 'Available' : 'Not supported',
+		text: ok ? TEXT.FEATURE_STATUS_AVAILABLE : TEXT.FEATURE_STATUS_NOT_SUPPORTED,
 	};
 };
 
@@ -304,19 +302,6 @@ export const requestNotificationPermission = async () => {
 	if (Notification.permission === 'denied') return 'denied';
 
 	return Notification.requestPermission();
-};
-
-/**
- * @param {string} filename
- */
-export const getFilenameWithoutExtension = (filename) => {
-	if (filename.toLowerCase().endsWith('.xiso.iso')) {
-		return (
-			filename.substring(0, filename.length - '.xiso.iso'.length) || filename
-		);
-	}
-
-	return filename.substring(0, filename.lastIndexOf('.')) || filename;
 };
 
 /**
@@ -426,3 +411,38 @@ export function formatTitle(base, percent) {
 export const prefersReducedMotion = () =>
 	typeof window !== 'undefined' &&
 	window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
+
+/**
+ * Swaps `array[idx]` with its `idx + direction` neighbor, in place.
+ * @param {unknown[]} array
+ * @param {number} idx
+ * @param {1 | -1} direction
+ * @returns {boolean} whether the swap happened (false if out of bounds)
+ */
+export function swapAdjacent(array, idx, direction) {
+	const newIdx = idx + direction;
+	if (newIdx < 0 || newIdx >= array.length) return false;
+	[array[idx], array[newIdx]] = [array[newIdx], array[idx]];
+	return true;
+}
+
+/**
+ * Yields to the browser's main-thread scheduler so queued input/paint
+ * work can run before the caller's next synchronous chunk starts.
+ * Prefers `scheduler.yield()` (schedules the continuation as a
+ * prioritized task ahead of unrelated new work); falls back to
+ * `setTimeout(0)` where it's unavailable, since a bare microtask
+ * (`Promise.resolve()`) never actually hands control back to the
+ * browser between two synchronous chunks. Works in both windows and
+ * workers - `scheduler` is available in both contexts.
+ * @returns {Promise<void>}
+ */
+export function yieldToMain() {
+	if (
+		typeof scheduler !== 'undefined' &&
+		typeof scheduler.yield === 'function'
+	) {
+		return scheduler.yield();
+	}
+	return new Promise((resolve) => setTimeout(resolve, 0));
+}

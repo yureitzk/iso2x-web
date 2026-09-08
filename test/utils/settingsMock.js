@@ -15,6 +15,7 @@ const MOCK_DEFAULTS = {
 	notifyIgnoreFocus: false,
 	theme: 'system',
 	keepScreenAwake: true,
+	audioKeepAlive: false,
 	multiFileDownloadsPrimed: false,
 	headerAnimation: false,
 	faviconEnabled: true,

@@ -3,7 +3,7 @@ import { setDefaultLogLevel } from './lib/logger.js';
 import { initTheme } from './lib/theme.js';
 import { initFavicon } from './lib/favicon.js';
 import { initBadge } from './lib/badge.js';
-import { initServiceWorker } from './serviceWorker/SwBridge.js';
+import { initServiceWorker } from './serviceWorker/controller/SwBridge.js';
 import { initFeatures, setFeaturesSwBridge } from './ui/features.js';
 import { applyHeaderAnimation, initSettingsPanel } from './ui/settingsPanel.js';
 import { initQueue } from './ui/queue/queueUi.js';

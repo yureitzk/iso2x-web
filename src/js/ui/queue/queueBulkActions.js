@@ -1,5 +1,5 @@
 import { TEXT } from '../../constants/messages.js';
-import { queue } from '../../queue/queue.js';
+import { queue } from '../../core/queue.js';
 
 /**
  * @import { QueueCommand, QueueEntry } from '../../../types/global'
@@ -82,9 +82,6 @@ export function createBulkActionsController({
 			_selectAllCheckbox.disabled = visibleItems.length === 0;
 		}
 
-		// Eligibility comes from queueCommands' own canRun - the same
-		// predicate the click handlers below filter on - so this can't
-		// quietly drift from what clicking the button actually does.
 		const canConvertAny = selectedItems.some((i) =>
 			queueCommands.convert.canRun(i),
 		);
@@ -146,7 +143,7 @@ export function createBulkActionsController({
 		});
 
 		_batchConvertBtn?.addEventListener('click', () => {
-			// Safe to fire all at once - the slot queue caps concurrency.
+			// Fine to fire all at once; the slot queue caps concurrency.
 			selectedFor(queueCommands.convert).forEach((item) =>
 				queueCommands.convert.run(item),
 			);
@@ -156,10 +153,11 @@ export function createBulkActionsController({
 			const eligible = selectedFor(queueCommands.pause);
 			const target = pauseBatchTarget(eligible);
 			if (target === null) return;
-			// Only touch items not already in the target state - running
-			// commands.pause.run() unconditionally toggles per item, so a
-			// paused item hit by a 'pause' pass (or a running item hit by
-			// a 'resume' pass) would flip the wrong way.
+
+			// commands.pause.run() unconditionally toggles each item, so
+			// skip anything already in the target state. Otherwise a
+			// paused item caught in a 'pause' pass (or a running item in a
+			// 'resume' pass) would flip the wrong way.
 			for (const item of eligible) {
 				const alreadyThere =
 					(target === 'pause' && item.status === 'paused') ||

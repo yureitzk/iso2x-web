@@ -322,9 +322,8 @@ test.describe('bulk actions - Batch Pause applies one action to the whole select
 		await queuePage.pauseBtn(itemA).click();
 		await queuePage.batchPauseBtn.click();
 
-		// Correct: both end up paused. The old per-item toggle bug would
-		// instead flip A back to running (it was already paused) and B to
-		// paused, swapping their states instead of unifying them.
+		// Both must end up paused, not swapped - each item's toggle applies
+		// to its own current state, not the other item's.
 		await expect(queuePage.status(itemA)).toContainText(TEXT.PAUSED(), {
 			timeout: 15_000,
 		});

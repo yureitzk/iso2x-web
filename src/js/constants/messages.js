@@ -38,6 +38,7 @@ export const TEXT = {
 	ADD_DISC_FOLDER: 'Add disc (folder)',
 	ADD_DISC_FILE: 'Add disc (file)',
 	ADD_FILE: 'Add file',
+	DROPZONE_ADDED: 'Added to queue',
 	NOTIFICATION_DENIED:
 		'Notification permission was denied.\n\nTo enable notifications you will need to allow them in your browser site settings and then reload the page.',
 	COPY: 'Copy',
@@ -83,4 +84,34 @@ export const TEXT = {
 		`Device ID must be exactly 40 hex characters, got ${length}`,
 	DEVICE_ID_INVALID_CHARS:
 		'Device ID must contain only hex characters (0-9, a-f)',
+
+	FEATURE_STATUS_AVAILABLE: 'Available',
+	FEATURE_STATUS_NOT_SUPPORTED: 'Not supported',
+	SW_NOT_REGISTERED: 'Not registered',
+	SW_ACTIVE_UNCONTROLLED: 'Active (Uncontrolled)',
+	SW_RUNNING: 'Running',
+	SW_INSTALLING: 'Installing',
+	SW_WAITING_TO_ACTIVATE: 'Waiting to activate',
+	SW_REGISTERED_NOT_ACTIVE: 'Registered but not active',
+	NOTIFICATIONS_PERMISSION_GRANTED: 'Permission granted',
+	NOTIFICATIONS_PERMISSION_DENIED: 'Permission denied',
+	NOTIFICATIONS_PERMISSION_NOT_GRANTED: 'Permission not granted',
+	MULTI_FILE_DOWNLOADS_CHECKED: 'Checked',
+	MULTI_FILE_DOWNLOADS_NOT_CHECKED_YET: 'Not checked yet',
+
+	FEATURE_LABEL_WEB_WORKERS: 'Web Workers',
+	FEATURE_LABEL_SERVICE_WORKER: 'Service Worker',
+	FEATURE_LABEL_WEBASSEMBLY: 'WebAssembly',
+	FEATURE_LABEL_WEBKITDIRECTORY: 'Webkitdirectory',
+	FEATURE_LABEL_MULTI_FILE_DOWNLOADS: 'Multi-file Downloads',
+	FEATURE_LABEL_NOTIFICATIONS: 'Notifications',
+	FEATURE_LABEL_SCREEN_WAKE_LOCK: 'Screen Wake Lock',
+	FEATURE_LABEL_BADGING_API: 'Badging API',
+	FEATURE_RECHECK: 'Re-check',
+	FEATURE_CHECK: 'Check',
+	FEATURE_CHECK_ERROR: 'Error',
+	MULTI_FILE_DOWNLOADS_NOTIFY_TITLE: 'Multi-file downloads',
+
+	AUDIO_KEEPALIVE_MEDIA_TITLE: 'Keeping this tab active',
+	AUDIO_KEEPALIVE_MEDIA_ARTIST: 'Conversion in progress',
 };

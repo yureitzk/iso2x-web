@@ -1,10 +1,7 @@
 import { vi } from 'vitest';
 
 /**
- * @import {
- *   SingleDroppedSource,
- *   NormalizedConvert,
- * } from '../../src/types/global'
+ * @import { WorkerController } from '../../src/js/workers/controller/WorkerController.js'
  */
 
 /**
@@ -15,23 +12,17 @@ import { vi } from 'vitest';
  *
  * Real WorkerController has private (#-prefixed) fields, so TypeScript
  * treats it as nominal rather than structural, and this mock can never
- * satisfy that type directly. WorkerControllerLike is a hand-maintained
- * stand-in for its *public* surface: a mock missing a method fails
+ * satisfy that type directly. WorkerControllerLike is a `Pick` of the
+ * real class's public surface, so a mock missing a method fails
  * `@satisfies` at typecheck time instead of failing silently at first
- * use. Keep this typedef in sync with WorkerController's own public
- * methods/getters by hand.
+ * use - and the typedef tracks WorkerController automatically instead of
+ * needing to be kept in sync by hand.
  *
- * @typedef {object} WorkerControllerLike
- * @property {(source: SingleDroppedSource) => void} inspect
- * @property {(dirName: string, entries: string[], files: File[]) => void} partitionDir
- * @property {(names: string[], files: File[]) => void} verifyOrder
- * @property {(convert: NormalizedConvert) => void} start
- * @property {() => void} cleanup
- * @property {() => void} terminate
- * @property {() => void} release
- * @property {() => void} pause
- * @property {() => void} resume
- * @property {string[]} streamIds
+ * `streamIds` is picked out separately and re-declared as mutable: on
+ * the real class it's a read-only getter, but tests need to set it
+ * directly on the mock to simulate stream state.
+ *
+ * @typedef {Pick<WorkerController, 'inspect'|'partitionDir'|'verifyOrder'|'start'|'cleanup'|'terminate'|'release'|'pause'|'resume'> & { streamIds: string[] }} WorkerControllerLike
  */
 
 /**

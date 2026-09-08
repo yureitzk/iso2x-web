@@ -26,7 +26,7 @@ const { MockWorkerController, mockControllers } = await vi.hoisted(async () => {
 		await import('../../../../test/utils/workerControllerMock.js');
 	return createMockWorkerController();
 });
-vi.mock('../../workers/WorkerController.js', () => ({
+vi.mock('../../workers/controller/WorkerController.js', () => ({
 	WorkerController: MockWorkerController,
 }));
 const { lastController: lastControllerOf } =

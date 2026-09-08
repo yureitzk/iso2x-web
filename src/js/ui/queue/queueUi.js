@@ -6,8 +6,8 @@ import { setFaviconActivity } from '../../lib/favicon.js';
 import { setBadgeActiveCount } from '../../lib/badge.js';
 import { getActiveFilters, updateStats } from './queueStats.js';
 import { refreshMoveButtons } from './queueItemDom.js';
-import { createSourcePartsController } from './sourcePartsUi.js';
-import { baseNameForFiles, displayFileName } from './queueNaming.js';
+import { createSourcePartsController } from './sourceParts/sourcePartsUi.js';
+import { baseNameForFiles, displayFileName } from '../../lib/sourceLabels.js';
 import {
 	applyXbePatchConstraints,
 	applyAttachXbeConstraint,
@@ -29,12 +29,12 @@ import {
 	applyModeConstraints,
 	isActiveStatus,
 	queue,
-} from '../../queue/queue.js';
+} from '../../core/queue.js';
 import * as pkg from '../../../../package.json';
 
 /**
- * @import { SwBridge } from '../../serviceWorker/SwBridge.js'
- * @import { WorkerController } from '../../workers/WorkerController.js'
+ * @import { SwBridge } from '../../serviceWorker/controller/SwBridge.js'
+ * @import { WorkerController } from '../../workers/controller/WorkerController.js'
  * @import {
  *   QueueEntry,
  *   QueueCommand,
@@ -229,6 +229,24 @@ function updateProgressDisplay() {
 }
 
 /**
+ * Whether a setStatus() call can skip its DOM-update cascade because
+ * neither `status` nor `awaitingSlot` changed since the last call for
+ * this item - i.e. this is just a progress-percentage tick, which the
+ * cascade doesn't depend on.
+ * @param {string | undefined} previousKey
+ * @param {ConversionStatus} status
+ * @param {boolean} awaitingSlot
+ * @returns {{ skip: boolean, key: string }}
+ */
+export function statusUpdateDecision(previousKey, status, awaitingSlot) {
+	const key = `${status}:${awaitingSlot ? 1 : 0}`;
+	return { skip: previousKey === key, key };
+}
+
+/** @see statusUpdateDecision @type {WeakMap<QueueEntry, string>} */
+const _lastStatusKey = new WeakMap();
+
+/**
  * @param {QueueEntry}       item
  * @param {ConversionStatus} status
  * @param {string}           [label]
@@ -236,6 +254,15 @@ function updateProgressDisplay() {
 function setStatus(item, status, label) {
 	item.status = status;
 	if (label) item.statusEl.textContent = ` ${label}`;
+
+	const { skip, key } = statusUpdateDecision(
+		_lastStatusKey.get(item),
+		status,
+		!!item.awaitingSlot,
+	);
+	if (skip) return;
+	_lastStatusKey.set(item, key);
+
 	item.statusEl.classList.remove(...STATUSES.map(statusModifierClass));
 	item.statusEl.classList.add(statusModifierClass(status));
 	updateItemUi(item);
@@ -287,7 +314,7 @@ function resolveSource(item, outcome) {
 			item.formatSelectEl.disabled = false;
 			item.sourceFormat = payload.sourceFormat;
 			item.sourceIsOgx = payload.contentType === 'xboxOriginal';
-			// No icon isn't an error - e.g. encrypted retail XEX.
+			// Missing icon is expected for some sources (e.g. encrypted retail XEX), not an error.
 			if (payload.icon) {
 				const blobUrl = URL.createObjectURL(
 					// payload.icon's structured-clone-transferred buffer
@@ -321,8 +348,8 @@ function resolveSource(item, outcome) {
 			item.errorEl.removeAttribute('hidden');
 			setFallbackIcon(item);
 			setStatus(item, 'unresolved', TEXT.UNRESOLVED);
-			// Must run after the status flip - verifyOrderBtn.disabled is
-			// computed from item.status !== 'unresolved'.
+			// Has to run after the status flip since verifyOrderBtn.disabled
+			// is computed from item.status !== 'unresolved'.
 			sourceParts.renderSourceParts(item);
 			return;
 		}

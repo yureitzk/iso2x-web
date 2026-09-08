@@ -1,7 +1,7 @@
 /// <reference lib="webworker" />
 
 import { precacheAndRoute } from 'workbox-precaching';
-import { createHandlers } from './js/serviceWorker/swHandlers.js';
+import { createHandlers } from './js/serviceWorker/runtime/swHandlers.js';
 import { setDefaultLogLevel } from './js/lib/logger.js';
 
 setDefaultLogLevel();

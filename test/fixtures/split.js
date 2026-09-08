@@ -21,8 +21,7 @@ export function makeUnresolvedSplitFragments(isoBuffer) {
 
 /**
  * Writes an arbitrary flat set of named files into a fresh temp directory -
- * for "batch dir" fixtures (neither god- nor extracted-shaped, possibly
- * mixing a real single-file/split-pair source with unrelated junk files).
+ * for "batch dir" fixtures.
  *
  * @param {{ name: string, bytes: Uint8Array }[]} files
  * @param {string} [prefix]

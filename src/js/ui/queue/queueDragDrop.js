@@ -1,11 +1,12 @@
 import { fromEvent } from 'file-selector';
 import { EVENTS } from '../../core/protocol.js';
+import { TEXT } from '../../constants/messages.js';
 import { createLogger } from '../../lib/logger.js';
-import { WorkerController } from '../../workers/WorkerController.js';
-import { inspectWorkerPool } from '../../workers/WorkerPool.js';
+import { WorkerController } from '../../workers/controller/WorkerController.js';
+import { inspectWorkerPool } from '../../workers/controller/WorkerPool.js';
 
 /**
- * @import { SwBridge } from '../../serviceWorker/SwBridge.js'
+ * @import { SwBridge } from '../../serviceWorker/controller/SwBridge.js'
  * @import { DroppedSource } from '../../../types/global'
  * @import { FileWithPath } from 'file-selector'
  */
@@ -36,15 +37,12 @@ function isFileDrag(dt) {
  * Maps file-selector's flattened `FileWithPath[]` into the
  * `(entries[], files[])` shape `WorkerController#partitionDir()` expects.
  *
- * Uses `.relativePath` rather than `.path`, since `.path` is left
- * untouched by file-selector when already a string (e.g. an Electron
- * File's absolute path), while `.relativePath` is always its own
- * computed value. That value comes in one of three shapes: a
- * `/`-rooted path from a dropped `FileSystemEntry.fullPath` (e.g.
- * `"/MyGame/default.xex"`), a slash-less `File.webkitRelativePath`,
- * or `"./<name>"` when neither is available. Stripping the leading
- * `/` or `./` normalizes all three to what
- * `partitionDirEntries()` (src/js/workers/source.js) expects.
+ * Uses `.relativePath` rather than `.path` (which file-selector leaves
+ * untouched when already a string, e.g. an Electron File's absolute
+ * path). `.relativePath` comes in one of three shapes: a `/`-rooted
+ * `FileSystemEntry.fullPath`, a slash-less `File.webkitRelativePath`,
+ * or `"./<name>"`. Stripping the leading `/` or `./` normalizes all
+ * three to what `partitionDirEntries()` (source.js) expects.
  * @param {FileWithPath[]} filesWithPath
  * @returns {{ entries: string[], files: File[] }}
  */
@@ -104,7 +102,7 @@ export function createDragDropController({ getSwBridge, addSourceToQueue }) {
 
 		if (successFlashTimer) clearTimeout(successFlashTimer);
 		zone.classList.add('is-success');
-		if (hint) hint.textContent = 'Added to queue';
+		if (hint) hint.textContent = TEXT.DROPZONE_ADDED;
 
 		successFlashTimer = setTimeout(() => {
 			zone.classList.remove('is-success');
@@ -166,7 +164,7 @@ export function createDragDropController({ getSwBridge, addSourceToQueue }) {
 		if (!isFileDrag(dt) || !dt) return;
 
 		if (!supportsDragAsEntries()) {
-			// No FileSystemEntry access - fall back to a flat DataTransfer.files read.
+			// No FileSystemEntry access, so fall back to a flat DataTransfer.files read.
 			showFallbackNoteOnce();
 			const files = Array.from(dt.files ?? []);
 			runPartition(
@@ -209,7 +207,7 @@ export function createDragDropController({ getSwBridge, addSourceToQueue }) {
 			}
 		});
 
-		// Required or `drop` never fires - the browser rejects the drop by default.
+		// Without preventDefault() here, the browser rejects the drop and `drop` never fires.
 		zone.addEventListener('dragover', (e) => {
 			if (!isFileDrag(e.dataTransfer)) return;
 			e.preventDefault();

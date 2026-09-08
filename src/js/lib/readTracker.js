@@ -4,18 +4,12 @@
  */
 let _bytesRead = 0;
 
-/**
- * Tracks bytes actually returned by a FileReaderSync read.
- * @param {number} n
- */
+/** @param {number} n */
 export function trackRead(n) {
 	_bytesRead += n;
 }
 
-/**
- * Returns and resets the bytes-read total.
- * @returns {number}
- */
+/** @returns {number} the total, reset to 0 */
 export function takeBytesRead() {
 	const total = _bytesRead;
 	_bytesRead = 0;

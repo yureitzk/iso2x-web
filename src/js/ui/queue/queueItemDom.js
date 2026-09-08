@@ -1,6 +1,6 @@
 import { queryElement } from '../../lib/helpers.js';
 import { isScrolledToBottom } from '../../lib/logger.js';
-import { queue } from '../../queue/queue.js';
+import { queue } from '../../core/queue.js';
 
 /**
  * @import { QueueEntry } from '../../../types/global'
@@ -160,9 +160,11 @@ export function moveBlock(item, direction) {
 	const logScrollTop = item.logEl.scrollTop;
 
 	queue.splice(from, 1);
-	// Removing `item` shifts every later index left by one, including
-	// neighbor's if it came after `item` in the underlying array.
+
 	if (to > from) to -= 1;
+
+	if (direction === 'down') to += 1;
+
 	queue.splice(to, 0, item);
 
 	if (direction === 'up') {
@@ -187,11 +189,13 @@ export function moveBlock(item, direction) {
  */
 export function refreshMoveButtons() {
 	const visible = visibleQueue();
+	const positionOf = new Map(visible.map((item, i) => [item, i]));
+	const lastIndex = visible.length - 1;
 	queue.forEach((item) => {
-		const index = visible.indexOf(item);
-		const isVisible = index !== -1;
+		const index = positionOf.get(item);
+		const isVisible = index !== undefined;
 		item.moveUpBtn.disabled = !isVisible || index === 0;
-		item.moveDownBtn.disabled = !isVisible || index === visible.length - 1;
+		item.moveDownBtn.disabled = !isVisible || index === lastIndex;
 	});
 }
 

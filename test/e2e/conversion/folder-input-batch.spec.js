@@ -232,12 +232,6 @@ test.describe('folder / directory input: loose files & batches', () => {
 		await queuePage.expectDone(item, { timeout: 60_000 });
 	});
 
-	// Regression test: a GoD .data folder's header stub sits beside the
-	// folder and shares STFS's magic bytes but has no allocated blocks,
-	// so it always fails to open standalone (see discSourceFor()'s doc
-	// comment in src/js/workers/source.js). Mixed into the same batch
-	// drop as an unrelated loose file, it used to leak into the magic-
-	// detection fallback as a bogus third "invalid stfs" item.
 	test('a folder mixing an unrelated loose game with a GoD .data folder plus its header stub queues exactly one item per source, with no phantom stfs error', async ({
 		queuePage,
 	}) => {

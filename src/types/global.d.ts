@@ -2,8 +2,38 @@
 
 import { EVENTS, MSG } from '../js/core/protocol.js';
 import type { ContentType, TitleVersion, InvalidKind } from 'iso2x';
+import type { WorkerController } from '../js/workers/controller/WorkerController.js';
+import type { SwBridge } from '../js/serviceWorker/controller/SwBridge.js';
 
-export type { InvalidKind };
+/**
+ * A reference to one STORE (uncompressed) entry inside a dropped zip
+ * file - the zip-import equivalent of a real `File`. A plain data
+ * object, not a `File` subclass: `source.files` crosses `postMessage`,
+ * and structured clone drops a class's prototype/methods. `zipFile` is
+ * the real dropped `File`, so it survives that natively.
+ */
+export type ZipEntryFileRef = {
+	kind: 'zipEntry';
+	name: string;
+	size: number;
+	zipFile: File;
+	/** Absolute byte offset of this entry's data within `zipFile`. */
+	dataOffset: number;
+	/**
+	 * This entry's own path inside the zip (e.g. "HaloCE/HaloCE.iso"),
+	 * vs. `name`, its basename. Used by sourceLabels.js's
+	 * assignZipLabels() to find a per-game folder in a multi-game zip.
+	 */
+	entryPath: string;
+};
+
+/**
+ * Anything the queue/worker pipeline can read as one input file: a real
+ * dropped/selected `File`, or a `ZipEntryFileRef` into an uncompressed
+ * zip entry. See `ZipEntryFileRef`'s doc comment for why the latter
+ * can't just be a `File` subclass.
+ */
+export type SourceFile = File | ZipEntryFileRef;
 
 export type Theme = 'light' | 'dark' | 'system';
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
@@ -48,13 +78,21 @@ export type ConversionStatus =
 export type SingleDroppedSource =
 	| {
 			kind: 'files';
-			files: File[];
+			files: SourceFile[];
 			invalidReason?: string;
 			invalidKind?: InvalidKind;
+			/**
+			 * Display-name override assigned by sourceLabels.js's
+			 * assignZipLabels() for a zip-derived source: the zip's own
+			 * filename when it's the zip's only game, or the game's
+			 * parent folder inside the zip when the zip bundles several.
+			 * Absent for anything not zip-derived.
+			 */
+			zipLabel?: string;
 	  }
 	| {
 			kind: 'dir';
-			files: File[];
+			files: SourceFile[];
 			dirName: string;
 			entries: string[];
 			parentPath?: string;
@@ -73,7 +111,7 @@ export type CheckedEntry = { path: string; matched: boolean };
 
 export type UnresolvedSource = {
 	kind: 'unresolved';
-	files: File[];
+	files: SourceFile[];
 	reason: string;
 	/**
 	 * Why this entry is unresolved:
@@ -90,13 +128,11 @@ export type UnresolvedSource = {
 	unresolvedKind?: 'duplicateDiscClaim' | 'ambiguousHeaders';
 	/**
 	 * Set only for a `duplicateDiscClaim` whose `files` are every
-	 * `Data####` chunk of one dir-format (e.g. GOD) folder that
-	 * collided with another claimant - i.e. `files` isn't a flat pile
-	 * of independent parts, it's one folder's insides. Lets the UI
-	 * render a single "<dirName>/" row for it, the same way a resolved
-	 * `dir` source already does, instead of one row per chunk file.
-	 * Unset for a flat single-file (or genuine multi-file split)
-	 * collision, where `files` really is the thing to list.
+	 * `Data####` chunk of one dir-format (e.g. GOD) folder, not a flat
+	 * pile of independent parts. Lets the UI render a single
+	 * "<dirName>/" row for it, like a resolved `dir` source, instead of
+	 * one row per chunk file. Unset for a flat single-file (or genuine
+	 * multi-file split) collision.
 	 */
 	dirName?: string;
 	lastVerifyResult?: {
@@ -160,7 +196,7 @@ export interface ConversionOptions {
 
 export type Source = {
 	gameTitle: string;
-	files: File[];
+	files: SourceFile[];
 	format: OutputFormat;
 	options: FormatOptions;
 	generateAttachXbe?: boolean;
@@ -214,15 +250,20 @@ export interface ResumeMessage {
 }
 export interface PartitionDirMessage {
 	type: MsgType['PARTITION_DIR'];
-	dirName: string;
+	/** Only meaningful (and only sent) on the first chunk of a call. */
+	dirName?: string;
 	entries: string[];
-	files: File[];
+	files: SourceFile[];
+	/** 0-based chunk position. 0 means "reset the buffer". */
+	chunkIndex: number;
+	/** Total chunks in this partitionDir() call. Last chunk = totalChunks - 1. */
+	totalChunks: number;
 }
 export interface VerifyOrderMessage {
 	type: MsgType['VERIFY_ORDER'];
 	/** Candidate ordering to verify, header part first. */
 	names: string[];
-	files: File[];
+	files: SourceFile[];
 }
 export type ControllerMessage =
 	| PauseMessage
@@ -297,6 +338,7 @@ export type SiteSettings = {
 	notifyIgnoreFocus: boolean;
 	theme: Theme;
 	keepScreenAwake: boolean;
+	audioKeepAlive: boolean;
 	multiFileDownloadsPrimed: boolean;
 	headerAnimation: boolean;
 	faviconEnabled: boolean;
@@ -322,14 +364,14 @@ export interface DiscRunProgress {
 
 export interface QueueEntry {
 	id: string;
-	files: File[];
+	files: SourceFile[];
 	source: DroppedSource;
 	/**
 	 * The File objects this entry had at creation time, compared by
 	 * identity. Anything in `source.files` not in this set was attached
 	 * later via attachSibling() and can be removed individually.
 	 */
-	lockedFiles: Set<File>;
+	lockedFiles: Set<SourceFile>;
 	sourceIsOgx: boolean | undefined;
 	generateAttachXbe: boolean;
 	status: ConversionStatus;
@@ -431,13 +473,29 @@ export type SourceOutcome =
 	| { kind: 'error'; message: string }
 	| { kind: 'unresolved'; source: UnresolvedSource };
 
+/**
+ * Shared base for the sourceParts folder's per-module dependency bags
+ * (SourcePartsDeps, DiscActionsDeps, SplitActionsDeps in
+ * src/js/ui/queue/sourceParts/) - each needed `getSwBridge`/
+ * `resolveSource` on their own thinned-down deps object, so this is
+ * the single place to update both.
+ */
+export interface SourcePartsCoreDeps {
+	/**
+	 * A getter, not the SwBridge itself: queueUi.js's `_swBridge` isn't
+	 * assigned until initQueue() runs, after sourceParts is wired up.
+	 */
+	getSwBridge: () => SwBridge;
+	resolveSource: (item: QueueEntry, outcome: SourceOutcome) => void;
+}
+
 export interface PendingPartition {
 	dirName: string;
 	entries: string[];
-	files: File[];
+	files: SourceFile[];
 }
 
 export interface PendingVerify {
 	names: string[];
-	files: File[];
+	files: SourceFile[];
 }

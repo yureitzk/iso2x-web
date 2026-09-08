@@ -137,7 +137,7 @@
 							<input
 								type="file"
 								id="source-input"
-								accept=".iso,.cso,.ciso,.cci,.zar,application/x-iso9660-image"
+								accept=".iso,.cso,.ciso,.cci,.zar,.zip,application/x-iso9660-image,application/zip"
 								multiple
 								class="w-fit max-w-full"
 							/>
@@ -197,6 +197,12 @@
 							<label>
 								<input type="checkbox" id="keep-screen-awake" />
 								Keep screen awake while converting
+							</label>
+						</div>
+						<div class="mb-2">
+							<label>
+								<input type="checkbox" id="audio-keepalive" />
+								Play audio to keep this tab active
 							</label>
 						</div>
 						<div class="mb-2 hidden sm:block">

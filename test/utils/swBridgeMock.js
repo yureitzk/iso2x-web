@@ -1,18 +1,17 @@
 import { vi } from 'vitest';
 
 /**
+ * @import { SwBridge } from '../../src/js/serviceWorker/controller/SwBridge.js'
+ */
+
+/**
  * Real SwBridge has private (#-prefixed) fields, so TypeScript treats it
  * as nominal rather than structural and this mock can never satisfy that
- * type directly.
+ * type directly. SwBridgeLike is a `Pick` of SwBridge's own public
+ * surface, so it tracks the real class automatically instead of being
+ * hand-copied out of sync.
  *
- * @typedef {object} SwBridgeLike
- * @property {(id: string, filename: string, totalSize: bigint) => Promise<number>} registerStream
- * @property {(id: string, timeoutMs: number) => Promise<boolean>} waitForAttached
- * @property {(id: string, chunk: ArrayBuffer) => Promise<boolean>} sendChunk
- * @property {(id: string) => void} abortStream
- * @property {(id: string) => void} closeStream
- * @property {(streamIds: string[]) => void} heartbeat
- * @property {() => Promise<void>} primeMultiDownloadPermission
+ * @typedef {Pick<SwBridge, 'registerStream'|'waitForAttached'|'sendChunk'|'abortStream'|'closeStream'|'heartbeat'|'primeMultiDownloadPermission'>} SwBridgeLike
  */
 
 /**

@@ -1,6 +1,3 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { tmpdir } from 'node:os';
 import { test, expect } from '../support/test.js';
 import { TEXT } from '../../../src/js/constants/messages.js';
 import {
@@ -8,6 +5,7 @@ import {
 	XGD3_ROOT_OFFSET,
 	UNKNOWN_TITLE_ID,
 } from '../support/test-data.js';
+import { writeFixtureFile } from '../../fixtures/rawFile.js';
 import { installWorkerHarness } from '../../utils/worker-harness.js';
 
 /**
@@ -33,26 +31,16 @@ const isoBytes = makeFixture({
 	titleId: UNKNOWN_TITLE_ID,
 });
 
-/** @type {string} */
-let fixtureDir;
-/** @type {string} */
-let basePath;
-
-test.beforeAll(() => {
-	fixtureDir = fs.mkdtempSync(path.join(tmpdir(), 'iso2x-fixtures-'));
-	basePath = path.join(fixtureDir, '__base.iso');
-	fs.writeFileSync(basePath, isoBytes);
-});
-
-test.afterAll(() => {
-	fs.rmSync(fixtureDir, { recursive: true, force: true });
-});
-
+// Written straight into this test's own Playwright output dir via the
+// shared writeFixtureFile() helper - wiped automatically at the start of
+// every run, so no afterAll cleanup hook is needed. Same reasoning as
+// writePartsToTempDir()'s doc comment in fixtures/tempDir.js. Names are
+// already unique within a single test (isoName(i), 'a.iso'/'b.iso'/...),
+// so freshDir: false (flat path, skip-if-exists) is used instead of the
+// helper's default counter'd subdirectory.
 /** @param {string} name */
 function fixturePathFor(name) {
-	const namedPath = path.join(fixtureDir, name);
-	if (!fs.existsSync(namedPath)) fs.copyFileSync(basePath, namedPath);
-	return namedPath;
+	return writeFixtureFile(name, isoBytes, { freshDir: false });
 }
 
 /**
@@ -388,6 +376,29 @@ test.describe('queue priority reordering', () => {
 		);
 		await queuePage.moveUpBtn(a.item).click();
 		expect(await namesInOrder(queuePage, [a, b])).toEqual(['a.iso', 'b.iso']);
+	});
+
+	test('moving an item down updates array order and refreshes move button states', async ({
+		queuePage,
+	}) => {
+		const a = await addIdleItem(queuePage, 'a.iso');
+		const b = await addIdleItem(queuePage, 'b.iso');
+		const c = await addIdleItem(queuePage, 'c.iso');
+		const entries = [a, b, c];
+
+		await queuePage.moveDownBtn(a.item).click();
+
+		expect(await namesInOrder(queuePage, entries)).toEqual([
+			'b.iso',
+			'a.iso',
+			'c.iso',
+		]);
+
+		await expect(queuePage.moveUpBtn(a.item)).toBeEnabled();
+		await expect(queuePage.moveDownBtn(a.item)).toBeEnabled();
+
+		await expect(queuePage.moveUpBtn(b.item)).toBeDisabled();
+		await expect(queuePage.moveDownBtn(b.item)).toBeEnabled();
 	});
 
 	test('moving a waiting item to the front of the queue gives it priority for the next free slot', async ({

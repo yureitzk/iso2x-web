@@ -366,17 +366,11 @@ test.describe('console-sign - signed output', () => {
 		await queuePage.expectStatusKey(item, 'error', { timeout: 30_000 });
 	});
 
-	// Regression guard for a bug where converterWorker.js's
-	// resolveDroppedSource() filtered the package header out of
-	// sourceParts for any dropped GoD folder, so re-inspecting an
-	// already-signed (installedGame) package always reported the
-	// inferred gamesOnDemand type instead. The Rust side
-	// (GodSource::open / content_type_override / read_header_prefix)
-	// was always correct - this only ever broke on the front-end step
-	// that decides which dropped files become sourceParts, so it has to
-	// be caught by an actual folder re-drop rather than a direct
-	// inspectSource() call with a hand-assembled sourceParts array (see
-	// god.test.ts, which never exercised this).
+	// Re-dropping a signed GoD folder must keep the package header in
+	// sourceParts, or re-inspection reports gamesOnDemand instead of the
+	// correct installedGame type. Must be caught via an actual folder
+	// re-drop, not a direct inspectSource() call with hand-assembled
+	// sourceParts - see god.test.ts, which doesn't exercise that path.
 	test('re-dropping a signed GoD folder reports its real (installedGame) content type, not gamesOnDemand', async ({
 		queuePage,
 	}, testInfo) => {

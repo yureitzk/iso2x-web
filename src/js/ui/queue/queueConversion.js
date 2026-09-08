@@ -9,7 +9,11 @@ import {
 	notifyConversionStarted,
 	notifyConversionFinished,
 } from '../../lib/wakeLock.js';
-import { WorkerController } from '../../workers/WorkerController.js';
+import {
+	notifyConversionStarted as notifyAudioKeepAliveStarted,
+	notifyConversionFinished as notifyAudioKeepAliveFinished,
+} from '../../lib/audioKeepAlive.js';
+import { WorkerController } from '../../workers/controller/WorkerController.js';
 import { settings } from '../../lib/settings.js';
 import {
 	queue,
@@ -18,17 +22,17 @@ import {
 	getActiveStreamIds,
 	isEditable,
 	isActiveStatus,
-} from '../../queue/queue.js';
+} from '../../core/queue.js';
 import {
 	baseNameForFiles,
 	displayFileName,
 	outputFilenameFor,
 	resolveGameTitle,
-} from './queueNaming.js';
+} from '../../lib/sourceLabels.js';
 import { updateScrollBottomVisibility } from './queueItemDom.js';
 
 /**
- * @import { SwBridge } from '../../serviceWorker/SwBridge.js'
+ * @import { SwBridge } from '../../serviceWorker/controller/SwBridge.js'
  * @import {
  *   QueueEntry,
  *   ConversionStatus,
@@ -79,23 +83,13 @@ export function createConversionController({
 
 	const _slotQueue = createSlotQueue(queue, effectiveConversionConcurrency());
 
-	/**
-	 * Gates how many WorkerControllers may be in their download phase at
-	 * once, separately from `_slotQueue` (which gates conversion
-	 * concurrency). Defaults to 1 - see the MAX_CONCURRENT_DOWNLOAD_STREAMS
-	 * caveat in the settings UI copy for why raising this can serialize
-	 * whole conversions for some formats.
-	 */
+	/** Gates concurrent download phases, separately from `_slotQueue`. */
 	const _downloadSlotQueue = createSlotQueue(
 		queue,
 		effectiveDownloadConcurrency(),
 	);
 
-	/**
-	 * Called by the settings panel when either concurrency setting
-	 * changes. Takes effect immediately for future slot grants only -
-	 * never disturbs a conversion or download phase already running.
-	 */
+	/** Applies immediately to future slot grants; never disturbs running work. */
 	function updateConcurrencySettings() {
 		_slotQueue.setMaxConcurrent(effectiveConversionConcurrency());
 		_downloadSlotQueue.setMaxConcurrent(effectiveDownloadConcurrency());
@@ -106,9 +100,7 @@ export function createConversionController({
 	let _timerWorker;
 
 	/**
-	 * Marks the entry 'running' immediately, before the slot is granted,
-	 * so it reads as active while queued; `awaitingSlot` distinguishes
-	 * that wait from an actual in-progress conversion.
+	 * `awaitingSlot` distinguishes queued-waiting from actually converting.
 	 * @param {QueueEntry} entry
 	 * @returns {Promise<void>}
 	 */
@@ -131,10 +123,8 @@ export function createConversionController({
 	}
 
 	/**
-	 * Download-gate counterparts, passed into each WorkerController so it
-	 * can hold one download slot across its entire download phase - from
-	 * the first STREAM_INFO it sees through every stream it owns
-	 * closing - regardless of how many SW streams that turns out to be.
+	 * Lets a WorkerController hold one download slot across its whole
+	 * download phase, however many streams that involves.
 	 * @param {QueueEntry} entry
 	 * @returns {Promise<void>}
 	 */
@@ -155,10 +145,7 @@ export function createConversionController({
 	const TERMINAL_STATUSES = ['done', 'error', 'cancelled'];
 
 	/**
-	 * Shared terminal-transition bookkeeping for done/error/cancelled.
-	 * No-ops if entry is already terminal, since a controller can still
-	 * emit a second terminal event after the first (WorkerController
-	 * guards most of these but not all).
+	 * Shared done/error/cancelled bookkeeping. No-ops if already terminal.
 	 * @param {QueueEntry} entry
 	 * @param {ConversionStatus} status
 	 * @param {string} label
@@ -177,9 +164,6 @@ export function createConversionController({
 	}
 
 	/**
-	 * The one piece of conversion event wiring shared between
-	 * startConversion() and convertOneDisc(); their other handlers
-	 * differ too much to unify.
 	 * @param {WorkerController} ctrl
 	 * @param {Logger} logger
 	 */
@@ -201,9 +185,9 @@ export function createConversionController({
 		if (_activeConversions === 1) {
 			window.addEventListener('beforeunload', onBeforeUnload);
 			notifyConversionStarted();
+			notifyAudioKeepAliveStarted();
 
-			// Meant to solve this potential issue in Firefox:
-			// https://github.com/Touffy/client-zip/issues/46#issuecomment-1259223708
+			// Works around Firefox suspending setInterval in hidden tabs.
 			const blob = new Blob(
 				[
 					`let ids = [];
@@ -236,6 +220,7 @@ export function createConversionController({
 		if (_activeConversions === 0) {
 			window.removeEventListener('beforeunload', onBeforeUnload);
 			notifyConversionFinished();
+			notifyAudioKeepAliveFinished();
 			if (_timerWorker) {
 				_timerWorker.terminate();
 				_timerWorker = undefined;
@@ -280,11 +265,7 @@ export function createConversionController({
 
 		await _acquireConversionSlot(entry);
 
-		// May have been removed or cancelled while waiting for a slot -
-		// even from this same click, since cancelling an active
-		// conversion can synchronously promote this entry via drain()
-		// before a batch cancel loop reaches it. Without this check
-		// we'd resurrect an item the user just cancelled.
+		// May have been removed/cancelled while waiting for a slot.
 		if (!queue.includes(entry) || entry.status === 'cancelled') {
 			_releaseConversionSlot();
 			return;
@@ -299,8 +280,7 @@ export function createConversionController({
 		}
 
 		if (entry.source.kind === 'unresolved') {
-			// Unreachable in practice (isEditable() already returned above) -
-			// narrows entry.source to SingleDroppedSource for ctrl.start() below.
+			// Unreachable (isEditable() already returned above); narrows the type.
 			return;
 		}
 
@@ -389,9 +369,7 @@ export function createConversionController({
 	}
 
 	/**
-	 * Converts a multi-disc entry's discs one after another, reusing one
-	 * WorkerController per disc in sequence. Stops on the first error or
-	 * cancellation.
+	 * Converts each disc in sequence; stops on first error or cancellation.
 	 * @param {QueueEntry} entry
 	 */
 	async function startMultiDiscConversion(entry) {
@@ -402,8 +380,7 @@ export function createConversionController({
 			statuses: discs.map(() => 'queued'),
 		});
 		entry.discRun = discRun;
-		// Weights entry.progress by each disc's actual byte share, since
-		// discs are rarely equal in size.
+		// Weights entry.progress by each disc's actual byte share.
 		const discSizes = discs.map((d) =>
 			d.files.reduce((sum, f) => sum + f.size, 0),
 		);
@@ -482,10 +459,8 @@ export function createConversionController({
 	}
 
 	/**
-	 * Resolves on DONE, rejects with DiscCancelledError on CANCELLED or a
-	 * plain Error on ERROR - startMultiDiscConversion()'s catch branches
-	 * on that. Also drives entry.progress, weighted by this disc's byte
-	 * share, since that's what the tab-title percentage reads.
+	 * Resolves on DONE; rejects with DiscCancelledError on CANCELLED,
+	 * or a plain Error on ERROR.
 	 * @param {QueueEntry} entry
 	 * @param {SingleDroppedSource} disc
 	 * @param {number} index
@@ -526,10 +501,8 @@ export function createConversionController({
 			});
 			const discRun = /** @type {DiscRunProgress} */ (entry.discRun);
 
-			// Mirrors startConversion()'s onSwCancelled wiring: without it, an
-			// SW abort with no chunk in flight has no way to reach this
-			// disc's controller, since WorkerController only learns of an
-			// abort indirectly, via a rejected sendChunk().
+			// Without this, an SW abort with no chunk in flight can't reach
+			// this disc's controller.
 			/** @param {Event} e */
 			const onSwCancelled = (e) => {
 				const ce = /** @type {CustomEvent<string>} */ (e);

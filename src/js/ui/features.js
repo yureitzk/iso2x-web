@@ -11,10 +11,11 @@ import {
 import { createLogger } from '../lib/logger.js';
 import { settings, checkMultiFileDownloads } from '../lib/settings.js';
 import { notify } from '../lib/notify.js';
+import { TEXT } from '../constants/messages.js';
 
 /**
  * @import { Feature } from '../../types/global'
- * @import { SwBridge } from '../serviceWorker/SwBridge.js'
+ * @import { SwBridge } from '../serviceWorker/controller/SwBridge.js'
  */
 
 const log = createLogger('features');
@@ -30,7 +31,7 @@ export function setFeaturesSwBridge(swBridge) {
 async function enableMultiFileDownloads() {
 	if (!_swBridge) {
 		log.error('enableMultiFileDownloads called before setFeaturesSwBridge()');
-		notify('error', 'Multi-file downloads');
+		notify('error', TEXT.MULTI_FILE_DOWNLOADS_NOTIFY_TITLE);
 		return;
 	}
 	try {
@@ -38,28 +39,29 @@ async function enableMultiFileDownloads() {
 		settings.set('multiFileDownloadsPrimed', true);
 	} catch (e) {
 		log.warn('Failed to prime multi-file downloads', e);
-		notify('error', 'Multi-file downloads');
+		notify('error', TEXT.MULTI_FILE_DOWNLOADS_NOTIFY_TITLE);
 	}
 	window.dispatchEvent(new Event(EVENTS.FEATURE_CHANGED));
 }
 
 /** @type {Array<Feature>} */
 const FEATURES = [
-	{ label: 'Web Workers', check: checkWebWorkers },
-	{ label: 'Service Worker', check: checkServiceWorker },
-	{ label: 'WebAssembly', check: checkWebAssembly },
-	{ label: 'Webkitdirectory', check: checkFolderInput },
+	{ label: TEXT.FEATURE_LABEL_WEB_WORKERS, check: checkWebWorkers },
+	{ label: TEXT.FEATURE_LABEL_SERVICE_WORKER, check: checkServiceWorker },
+	{ label: TEXT.FEATURE_LABEL_WEBASSEMBLY, check: checkWebAssembly },
+	{ label: TEXT.FEATURE_LABEL_WEBKITDIRECTORY, check: checkFolderInput },
 	{
-		label: 'Multi-file Downloads',
+		label: TEXT.FEATURE_LABEL_MULTI_FILE_DOWNLOADS,
 		check: checkMultiFileDownloads,
 		action: {
-			label: (status) => (status === 'available' ? 'Re-check' : 'Check'),
+			label: (status) =>
+				status === 'available' ? TEXT.FEATURE_RECHECK : TEXT.FEATURE_CHECK,
 			onClick: enableMultiFileDownloads,
 		},
 	},
-	{ label: 'Notifications', check: checkNotifications },
-	{ label: 'Screen Wake Lock', check: checkWakeLock },
-	{ label: 'Badging API', check: checkBadging },
+	{ label: TEXT.FEATURE_LABEL_NOTIFICATIONS, check: checkNotifications },
+	{ label: TEXT.FEATURE_LABEL_SCREEN_WAKE_LOCK, check: checkWakeLock },
+	{ label: TEXT.FEATURE_LABEL_BADGING_API, check: checkBadging },
 ];
 
 export async function initFeatures() {
@@ -81,7 +83,7 @@ export async function initFeatures() {
 					label: row.label,
 					action: row.action,
 					status: 'not-available',
-					text: 'Error',
+					text: TEXT.FEATURE_CHECK_ERROR,
 				};
 			}
 		}),

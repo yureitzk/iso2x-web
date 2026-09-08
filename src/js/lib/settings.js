@@ -1,6 +1,7 @@
 import { createLogger } from '../lib/logger.js';
 import { prefersReducedMotion } from './helpers.js';
 import { DEFAULT_CONVERSION_OPTIONS } from '../constants/conversion.js';
+import { TEXT } from '../constants/messages.js';
 
 /**
  * @import { SiteSettings, FeatureCheck } from '../../types/global'
@@ -18,6 +19,7 @@ const DEFAULTS = {
 	notifyIgnoreFocus: false,
 	theme: 'system',
 	keepScreenAwake: true,
+	audioKeepAlive: false,
 	headerAnimation: !prefersReducedMotion(),
 	faviconEnabled: true,
 	faviconPulseAnimation: !prefersReducedMotion(),
@@ -131,6 +133,6 @@ export const settings = {
 export const checkMultiFileDownloads = async () => {
 	const primed = settings.get('multiFileDownloadsPrimed');
 	return primed
-		? { status: 'available', text: 'Checked' }
-		: { status: 'warn', text: 'Not checked yet' };
+		? { status: 'available', text: TEXT.MULTI_FILE_DOWNLOADS_CHECKED }
+		: { status: 'warn', text: TEXT.MULTI_FILE_DOWNLOADS_NOT_CHECKED_YET };
 };
